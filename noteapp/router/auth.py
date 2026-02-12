@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from typing import Annotated
 from passlib.context import CryptContext
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
@@ -26,6 +26,8 @@ def get_db():
         db.close()
 
 db_dependency = Annotated[Session, Depends(get_db)]
+
+outh2_bearer = OAuth2PasswordBearer(tokenUrl='/auth/token')
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 load_dotenv()
@@ -58,6 +60,18 @@ def create_access_token(username:str, id:int, role:str, expires:timedelta):
     to_encode.update({'exp':expire})
     token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return token
+
+async def get_current_user(token:Annotated[str, Depends(outh2_bearer)]):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username:str = payload.get('sub')
+        user_id:int = payload.get('id')
+        user_role:str = payload.get('role')
+        if username is None or user_id is None or user_role is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid token')
+        return {'username':username, 'id':user_id, 'role':user_role}
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid token')
 
 @router.post('/create', status_code=status.HTTP_201_CREATED)
 async def create_user(db:db_dependency, new_user:UserCreate):
