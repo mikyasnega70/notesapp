@@ -3,7 +3,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from noteapp.main import app
-from noteapp.models import Notes
+from noteapp.models import Notes, Users
+from noteapp.router.auth import bcrypt_context
 from noteapp.database import Base
 import pytest
 
@@ -42,3 +43,19 @@ def test_note():
         conn.execute(text('delete from notes;'))
         conn.commit()
 
+@pytest.fixture
+def test_user():
+    user = Users(
+        username='testuser',
+        email='testuser@gmail.com',
+        name='Test User',
+        hashed_password=bcrypt_context.hash('testpassword'),
+        role='admin' 
+    )
+    db = Testsessionlocal()
+    db.add(user)
+    db.commit()
+    yield user
+    with engine.connect() as conn:
+        conn.execute(text('delete from users;'))
+        conn.commit()
