@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Restore Note{% endblock %}
+
+{% block content %}
+
+<h2>Restore Note</h2>
+
+<form id="restoreForm">
+    <input type="number" name="note_id" placeholder="Enter Note ID" required>
+    <button type="submit">Restore</button>
+</form>
+
+<p id="restoreMessage"></p>
+
+{% endblock %}

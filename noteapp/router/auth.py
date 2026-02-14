@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from starlette import status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
@@ -8,6 +8,7 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
+from fastapi.templating import Jinja2Templates
 from ..database import sessionlocal
 from ..models import Users
 import os
@@ -45,7 +46,18 @@ class Token(BaseModel):
     access_token:str
     token_type:str
 
+templates = Jinja2Templates(directory='noteapp/templates')
 
+## pages ##
+@router.get('/login-page')
+async def render_login_page(request:Request):
+    return templates.TemplateResponse('login.html', {'request':request})
+
+@router.get('/register-page')
+async def render_register_page(request:Request):
+    return templates.TemplateResponse('register.html', {'request':request})
+
+## endpoints ##
 def authenticate_user(username:str, password:str, db:Session):
     user = db.query(Users).filter(Users.username == username).first()
     if not user:

@@ -1,17 +1,20 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from .models import Base, Users
 from .database import engine
 from .router import note, auth
 from sqlalchemy.orm import Session
-from passlib.context import CryptContext
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 
 app = FastAPI()
 
 Base.metadata.create_all(bind=engine)
-bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+app.mount('/static', StaticFiles(directory='noteapp/static'), name='static')
+
 @app.get('/')
 async def test():
-    return {'status':'healthy'}
+    response = RedirectResponse(url='/notes/home-page/', status_code=status.HTTP_302_FOUND)
+    return response
 
 app.include_router(note.router) 
 app.include_router(auth.router)

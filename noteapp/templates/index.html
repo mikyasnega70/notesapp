@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}All Notes{% endblock %}
+
+{% block content %}
+
+<h2>All Notes</h2>
+
+<form id="searchForm">
+    <input type="text" name="search" placeholder="Search..." value="{{ search or '' }}">
+    <button type="submit">Search</button>
+    <a href="/notes/home-page/">Clear</a>
+</form>
+
+<br>
+
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Title</th>
+            <th>Edit</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for note in notes %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ note.title }}</td>
+            <td>
+                <a href="/notes/edit-page/{{ note.id }}">
+                    <button type="button">Edit</button>
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if not notes %}
+<p>No notes found.</p>
+{% endif %}
+
+{% endblock %}

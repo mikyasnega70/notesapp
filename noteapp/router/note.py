@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Path, Query
+from fastapi import APIRouter, HTTPException, Depends, Path, Query, Request
 from starlette import status
 from pydantic import BaseModel
 from sqlalchemy import or_, select
@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from typing import Annotated, Optional, Generic, TypeVar
 from datetime import datetime
 from .auth import get_current_user
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse
 from ..database import sessionlocal
 from ..models import Notes, Users
 import markdown
@@ -59,6 +61,57 @@ db_dependency = Annotated[Session, Depends(get_db)]
 
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
+templates = Jinja2Templates(directory='noteapp/templates')
+
+def redirect_to_login():
+    response = RedirectResponse(url='/auth/login-page', status_code=status.HTTP_302_FOUND)
+    response.delete_cookie('access_token')
+    return response
+
+## pages ##
+@router.get('/home-page/')
+async def render_home_page(request:Request, db:db_dependency, search:Optional[str]=Query(default=None, min_length=3)):
+    try:
+        user = await get_current_user(request.cookies.get('access_token'))
+
+        if not user:
+            return redirect_to_login()
+        
+        if search:
+            notes = db.query(Notes).filter(or_(Notes.title.ilike(f"%{search}%"), Notes.content.ilike(f"%{search}%"))).filter(Notes.is_deleted == False).filter(Notes.owner_id == user.get('id')).all()
+            return templates.TemplateResponse('index.html', {'request':request, 'notes':notes, 'user':user})
+        
+        notes = db.query(Notes).filter(Notes.owner_id == user.get('id'), Notes.is_deleted == False).all()
+        return templates.TemplateResponse('index.html', {'request':request, 'notes':notes, 'user':user})
+    except:
+        return redirect_to_login()
+    
+@router.get('/edit-page/{note_id}')
+async def render_edit_page(request:Request, db:db_dependency, note_id:int=Path(gt=0)):
+    try:
+        user = await get_current_user(request.cookies.get('access_token'))
+
+        if not user:
+            return redirect_to_login
+        
+        note = db.query(Notes).filter(Notes.id == note_id, Notes.owner_id == user.get('id')).first()
+        return templates.TemplateResponse('edit.html', {'request':request, 'note':note, 'user':user})
+    except:
+        return redirect_to_login()
+    
+@router.get('/restore-page')
+async def render_restore_page(request:Request, db:db_dependency):
+    try:
+        user = get_current_user(request.cookies.get('access_token'))
+        if not user:
+            return redirect_to_login()
+        
+        return templates.TemplateResponse('restore.html', {'request':request, 'user':user})
+    except:
+        return redirect_to_login()
+        
+
+## endpoint ##
 @router.get('/', status_code=status.HTTP_200_OK, response_model=PaginatedResponse[NoteResponse])
 async def get_all_notes(db:db_dependency, user:user_dependency, search:Optional[str]=Query(default=None, min_length=3), limit:Optional[int]=Query(default=10, ge=1,le=100), offset:Optional[int]=Query(default=0, ge=0)):
     user = db.query(Users).filter(Users.username == user.get('username'), Users.id == user.get('id')).first()
@@ -100,7 +153,7 @@ async def create_note(db:db_dependency, user:user_dependency, createfield:NoteCr
     db.add(note_model)
     db.commit()
 
-@router.put('/{note_id}', status_code=status.HTTP_204_NO_CONTENT)
+@router.put('/update/{note_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def update_note(db:db_dependency, user:user_dependency, updatefield:NoteUpdate, note_id:int=Path(gt=0)):
     user = db.query(Users).filter(Users.username == user.get('username'), Users.id == user.get('id')).first()
     if not user:
@@ -116,7 +169,7 @@ async def update_note(db:db_dependency, user:user_dependency, updatefield:NoteUp
     db.add(note_model)
     db.commit()
 
-@router.delete('/{note_id}', status_code=status.HTTP_204_NO_CONTENT)
+@router.delete('/delete/{note_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_note(db:db_dependency, user:user_dependency, note_id:int=Path(gt=0)):
     user = db.query(Users).filter(Users.username == user.get('username'), Users.id == user.get('id')).first()
     if not user:

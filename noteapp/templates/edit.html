@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Edit Note{% endblock %}
+
+{% block content %}
+
+<h2>Edit Note</h2>
+
+<form id="editForm">
+    <label>Title</label>
+    <input type="text" name="title" value="{{ note.title }}" required>
+
+    <label>Content</label>
+    <textarea name="content" required>{{ note.content }}</textarea>
+
+    <label>Tags</label>
+    <input type="text" name="tags" value="{{ note.tags | join(', ') }}">
+
+    <label>Created At</label>
+    <input type="text" value="{{ note.created_at }}" readonly>
+
+    <label>Updated At</label>
+    <input type="text" value="{{ note.updated_at }}" readonly>
+
+    <button type="submit">Update</button>
+</form>
+
+<br>
+
+<a href="/notes/home-page/">⬅ Back</a>
+
+<form id="deleteForm">
+    <button type="submit" class="danger">Soft Delete</button>
+</form>
+
+{% endblock %}
